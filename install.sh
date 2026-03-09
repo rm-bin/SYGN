@@ -105,7 +105,8 @@ sudo sed -i '/# sway autostart/,/^fi$/d' "$PROFILE_FILE" 2>/dev/null || true
 sudo tee "$PROFILE_FILE" > /dev/null <<EOF
 
 # sway autostart
-if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+if [ -z "\$WAYLAND_DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
+    sleep 5 # wait for internet connection
     exec sway
 fi
 EOF
