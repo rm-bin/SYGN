@@ -29,9 +29,7 @@ sudo apt install -y --no-install-recommends \
   sway \
   xwayland \
   chromium \
-  curl \
-  wireguard \
-  systemd-resolved
+  curl
 success "Packages installed."
 
 
