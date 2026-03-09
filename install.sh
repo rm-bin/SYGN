@@ -24,76 +24,92 @@ KIOSK_URL="${KIOSK_URL:-https://sygn.pages.dev/default.html}"
 # ────────────────────────────────────────────────
 info "Updating system and installing packages..."
 sudo apt update && sudo apt full-upgrade -y
-sudo apt install -y chromium wireguard wlrctl resolvconf
+
+sudo apt install -y --no-install-recommends \
+  sway \
+  xwayland \
+  chromium \
+  curl \
+  wireguard \
+  resolvconf
 success "Packages installed."
 
-# ────────────────────────────────────────────────
-# 2. Disable screensaver & auto-update timers
-# ────────────────────────────────────────────────
-info "Disabling screensaver and apt timers..."
-sudo systemctl mask xscreensaver.service         2>/dev/null || true
-sudo systemctl disable apt-daily.timer           2>/dev/null || true
-sudo systemctl disable apt-daily-upgrade.timer   2>/dev/null || true
-sudo systemctl stop    apt-daily.timer           2>/dev/null || true
-sudo systemctl stop    apt-daily-upgrade.timer   2>/dev/null || true
-success "Screensaver and update timers disabled."
 
 # ────────────────────────────────────────────────
-# 3. Disable LXDE screensaver / power management
+# 2. Download background image
 # ────────────────────────────────────────────────
-AUTOSTART_FILE="/etc/xdg/lxsession/LXDE-pi/autostart"
-if [ -f "$AUTOSTART_FILE" ]; then
-    info "Patching LXDE autostart to disable screensaver..."
-    sudo sed -i 's|^@xscreensaver.*||g' "$AUTOSTART_FILE"
-    # Ensure xset commands are present to turn off DPMS / screen blanking
-    grep -qxF '@xset s off'         "$AUTOSTART_FILE" || echo '@xset s off'         | sudo tee -a "$AUTOSTART_FILE" > /dev/null
-    grep -qxF '@xset -dpms'         "$AUTOSTART_FILE" || echo '@xset -dpms'         | sudo tee -a "$AUTOSTART_FILE" > /dev/null
-    grep -qxF '@xset s noblank'     "$AUTOSTART_FILE" || echo '@xset s noblank'     | sudo tee -a "$AUTOSTART_FILE" > /dev/null
-    success "LXDE autostart patched."
-else
-    warn "$AUTOSTART_FILE not found - skipping LXDE patch."
-fi
+sudo mkdir -p /usr/share/backgrounds/
+sudo curl -o /usr/share/backgrounds/wallpaper.png https://sygn.pages.dev/assets/wallpaper.png
+sudo chmod 644 /usr/share/backgrounds/wallpaper.png
+
+success "background image downloaded."
 
 # ────────────────────────────────────────────────
-# 4. Create kiosk startup script
+# 3. Update SWAY config
 # ────────────────────────────────────────────────
-STARTUP_SCRIPT="$HOME/.config/autostart/start-screen.sh"
-info "Creating kiosk startup script at $STARTUP_SCRIPT..."
-mkdir -p "$HOME/.config/autostart"
+sed -i '/^bar {/,/^}/d' /etc/sway/config # Remove bar
 
-cat > "$STARTUP_SCRIPT" << EOF
-#!/bin/bash
-DISPLAY=:0 /usr/bin/chromium \\
+success "sway config updated."
+
+# ────────────────────────────────────────────────
+# 4. Create SWAY Custom Config
+# ────────────────────────────────────────────────
+sudo tee /etc/sway/config.d/90-sygn.conf > /dev/null <<EOF
+output '*' bg "/usr/share/backgrounds/wallpaper.png" fill
+
+# Disable titlebar on windows
+default_border none
+
+# Disable gaps
+gaps inner 0
+gaps outer 0
+
+seat * hide_cursor when-typing enable
+seat * hide_cursor 1
+exec /usr/bin/chromium \\
+    --ozone-platform=wayland \\
     --incognito \\
     --kiosk \\
     --disable-infobars \\
     --noerrdialogs \\
     --start-fullscreen \\
-    ${KIOSK_URL} &
-
-sleep 15
-WAYLAND_DISPLAY=wayland-0 /usr/bin/wlrctl pointer move 99999 99999
-wait
+    --disable-restore-session-state \\
+    --check-for-update-interval=31536000 \\
+    ${KIOSK_URL}
 EOF
 
-chmod +x "$STARTUP_SCRIPT"
-success "Startup script created and made executable."
+success "sway custom config created."
 
 # ────────────────────────────────────────────────
-# 5. Create .desktop autostart entry
+# 5. Create autologin for tty1
 # ────────────────────────────────────────────────
-DESKTOP_FILE="$HOME/.config/autostart/sygn.desktop"
-info "Creating autostart .desktop entry at $DESKTOP_FILE..."
-
-cat > "$DESKTOP_FILE" << EOF
-[Desktop Entry]
-Type=Application
-Name=Start SYGN
-Exec=bash ${STARTUP_SCRIPT}
-X-GNOME-Autostart-enabled=true
+sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
+sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null <<EOF
+[Service]
+ExecStart=-/sbin/agetty --autologin $USER --noclear %I \$TERM
 EOF
 
-success ".desktop entry created."
+sudo systemctl daemon-reload
+
+success "autologin for tty1 enabled."
+
+# ────────────────────────────────────────────────
+# 6. Create .bash_profile to autostart sway
+# ────────────────────────────────────────────────
+PROFILE_FILE="$HOME/.bash_profile"
+
+# Remove existing sway autostart block if present
+sed -i '/# sway autostart/,/^fi$/d' "$PROFILE_FILE" 2>/dev/null || true
+
+cat >> "$PROFILE_FILE" <<EOF
+
+# sway autostart
+if [ -z "\$WAYLAND_DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
+    exec sway
+fi
+EOF
+
+success ".bash_profile updated."
 
 # ────────────────────────────────────────────────
 # Done
