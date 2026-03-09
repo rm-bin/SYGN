@@ -17,7 +17,7 @@ success() { echo -e "${GREEN}[OK]${NC}    $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
-KIOSK_URL="${KIOSK_URL:-https://sygn.pages.dev/default.html}"
+KIOSK_URL="${KIOSK_URL:-https://sygn.pages.dev}"
 
 # ────────────────────────────────────────────────
 # 1. System update & package install
@@ -47,7 +47,7 @@ success "background image downloaded."
 # ────────────────────────────────────────────────
 # 3. Update SWAY config
 # ────────────────────────────────────────────────
-sed -i '/^bar {/,/^}/d' /etc/sway/config # Remove bar
+sudo sed -i '/^bar {/,/^}/d' /etc/sway/config # Remove bar
 
 success "sway config updated."
 
@@ -99,9 +99,9 @@ success "autologin for tty1 enabled."
 PROFILE_FILE="$HOME/.bash_profile"
 
 # Remove existing sway autostart block if present
-sed -i '/# sway autostart/,/^fi$/d' "$PROFILE_FILE" 2>/dev/null || true
+sudo sed -i '/# sway autostart/,/^fi$/d' "$PROFILE_FILE" 2>/dev/null || true
 
-cat >> "$PROFILE_FILE" <<EOF
+sudo tee "$PROFILE_FILE" > /dev/null <<EOF
 
 # sway autostart
 if [ -z "\$WAYLAND_DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
