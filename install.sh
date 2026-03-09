@@ -31,7 +31,7 @@ sudo apt install -y --no-install-recommends \
   chromium \
   curl \
   wireguard \
-  resolvconf
+  systemd-resolved
 success "Packages installed."
 
 
