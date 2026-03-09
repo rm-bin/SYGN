@@ -86,6 +86,7 @@ success "sway custom config created."
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
 sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null <<EOF
 [Service]
+ExecStart=
 ExecStart=-/sbin/agetty --autologin $USER --noclear %I \$TERM
 EOF
 
@@ -104,7 +105,7 @@ sudo sed -i '/# sway autostart/,/^fi$/d' "$PROFILE_FILE" 2>/dev/null || true
 sudo tee "$PROFILE_FILE" > /dev/null <<EOF
 
 # sway autostart
-if [ -z "\$WAYLAND_DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
+if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
     exec sway
 fi
 EOF
