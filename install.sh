@@ -45,14 +45,7 @@ sudo chmod 644 /usr/share/backgrounds/wallpaper.png
 success "background image downloaded."
 
 # ────────────────────────────────────────────────
-# 3. Update SWAY config
-# ────────────────────────────────────────────────
-sudo sed -i '/^bar {/,/^}/d' /etc/sway/config # Remove bar
-
-success "sway config updated."
-
-# ────────────────────────────────────────────────
-# 4. Create SWAY Custom Config
+# 3. Create SWAY Custom Config
 # ────────────────────────────────────────────────
 sudo tee /etc/sway/config.d/90-sygn.conf > /dev/null <<EOF
 output '*' bg "/usr/share/backgrounds/wallpaper.png" fill
@@ -66,7 +59,9 @@ gaps outer 0
 
 seat * hide_cursor when-typing enable
 seat * hide_cursor 1
-exec /usr/bin/chromium \\
+
+exec_always bash -c 'sleep 1 && swaymsg bar mode invisible'
+exec sleep 5 && /usr/bin/chromium \\
     --ozone-platform=wayland \\
     --incognito \\
     --kiosk \\
@@ -81,7 +76,7 @@ EOF
 success "sway custom config created."
 
 # ────────────────────────────────────────────────
-# 5. Create autologin for tty1
+# 4. Create autologin for tty1
 # ────────────────────────────────────────────────
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
 sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null <<EOF
@@ -95,7 +90,7 @@ sudo systemctl daemon-reload
 success "autologin for tty1 enabled."
 
 # ────────────────────────────────────────────────
-# 6. Create .bash_profile to autostart sway
+# 5. Create .bash_profile to autostart sway
 # ────────────────────────────────────────────────
 PROFILE_FILE="$HOME/.bash_profile"
 
@@ -103,10 +98,8 @@ PROFILE_FILE="$HOME/.bash_profile"
 sudo sed -i '/# sway autostart/,/^fi$/d' "$PROFILE_FILE" 2>/dev/null || true
 
 sudo tee "$PROFILE_FILE" > /dev/null <<EOF
-
 # sway autostart
 if [ -z "\$WAYLAND_DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
-    sleep 5 # wait for internet connection
     exec sway
 fi
 EOF
