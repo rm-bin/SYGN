@@ -2,105 +2,107 @@
     <img src="assets/logo_large.svg" alt="SYGN" width="256">
 </p>
 
-## Installation command (comming soon)
+# Installation command
 
 ```bash
-...
+curl -fsSL https://sygn.pages.dev/install.sh | bash
 ```
 
-## Manual installation
+# Manual installation
 
-### Updates & Install packages
+## Updates & Install packages
 
 ```bash
-sudo apt update && sudo apt full-upgrade
-sudo apt install chromium wireguard wlrctl resolvconf -y
+sudo apt update && sudo apt full-upgrade -y
+sudo apt install -y --no-install-recommends sway xwayland chromium sway-backgrounds
 ```
 
-### Disable Screensaver
+> [!NOTE]
+> If you are on Ubuntu replace `chromium` with `chromium-browser`
+
+## Create necessary files
+
+### Optional: Set Wallpaper
 
 ```bash
-sudo systemctl mask xscreensaver.service
-sudo systemctl disable apt-daily.timer
-sudo systemctl disable apt-daily-upgrade.timer
-sudo systemctl stop apt-daily.timer
-sudo systemctl stop apt-daily-upgrade.timer
+sudo mkdir -p /usr/share/backgrounds/
+sudo curl -o /usr/share/backgrounds/wallpaper.png https://sygn.pages.dev/assets/wallpaper.png
+sudo chmod 644 /usr/share/backgrounds/wallpaper.png
 ```
 
-### Create necessary files
+Replace `https://sygn.pages.dev/assets/wallpaper.png` with your own image link.
 
-#### `start-screen.sh`
+### Create SWAY Custom Config
 
 ```bash
-mkdir -p ~/.config/autostart
-sudo nano ~/.config/autostart/start-screen.sh
+sudo nano /etc/sway/config.d/90-sygn.conf
 ```
 
 ```bash
-DISPLAY=:0 /usr/bin/chromium --incognito --kiosk --disable-infobars --noerrdialogs --start-fullscreen https://sygn.pages.dev/default.html &
-sleep 15
-WAYLAND_DISPLAY=wayland-0 /usr/bin/wlrctl pointer move 100 100
-wait
+# remove this line if you did not create a custom wallpaper as shown earlier
+output '*' bg "/usr/share/backgrounds/wallpaper.png" fill
+
+# Disable titlebar on windows
+default_border none
+
+# Disable gaps
+gaps inner 0
+gaps outer 0
+
+seat * hide_cursor when-typing enable
+seat * hide_cursor 1
+
+exec_always bash -c 'sleep 1 && swaymsg bar mode invisible'
+exec sleep 5 && /usr/bin/chromium \
+    --ozone-platform=wayland \
+    --incognito \
+    --kiosk \
+    --disable-infobars \
+    --noerrdialogs \
+    --no-first-run \
+    --start-fullscreen \
+    --disable-restore-session-state \
+    --check-for-update-interval=31536000 \
+    https://sygn.pages.dev
 ```
 
-`CTRL` + `S` → Save\
-`CTRL` + `X` → Exit
+> [!NOTE]
+> If you are on Ubuntu replace `chromium` with `chromium-browser`
 
-> [!TIP]
-> https://sygn.pages.dev/default.html
-
-##### Make file executable
+### Create autologin for tty1
 
 ```bash
-sudo chmod +x ~/.config/autostart/start-screen.sh
-```
-
-#### `sygn.desktop`
-
-```ini
-[Desktop Entry]
-Type=Application
-Name=Start SYGN
-Exec=bash screen.sh
-X-GNOME-Autostart-enabled=true
-```
-
----
-
-### Optional: Wireguard to visit privately hosted websites
-
-#### Create Wireguard Config
-
-```bash
-sudo nano /etc/wireguard/wg0.conf
-```
-
-#### Make it editable for owner
-
-```bash
-sudo chmod 600 /etc/wireguard/wg0.conf
-```
-
-#### Edit the Config
-
-```bash
-sudo systemctl edit wg-quick@wg0
+sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
+sudo nano /etc/systemd/system/getty@tty1.service.d/autologin.conf
 ```
 
 ```ini
-[Interface]
-PrivateKey = ...
-Address = ...
-DNS = ...
-
-[Peer]
-PublicKey = ...
-AllowedIPs = ...
-Endpoint = ...
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin $USER --noclear %I \$TERM
 ```
 
-#### Enable it
+```bash
+sudo systemctl daemon-reload
+```
+
+### Create `.bash_profile` to autostart sway
+
+#### Remove existing sway autostart block if present
 
 ```bash
-sudo systemctl enable wg-quick@wg0
+sudo sed -i '/# sway autostart/,/^fi$/d' "~/.bash_profile" 2>/dev/null || true
+```
+
+#### Edit `.bash_profile`
+
+```bash
+sudo nano ~/.bash_profile
+```
+
+```bash
+# sway autostart
+if [ -z "\$WAYLAND_DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
+    exec sway
+fi
 ```
