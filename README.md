@@ -10,15 +10,15 @@ curl -fsSL https://sygn.pages.dev/install.sh | bash
 
 # Manual installation
 
+> [!NOTE]
+> If you are on Ubuntu replace every occurence of `chromium` with `chromium-browser`
+
 ## Updates & Install packages
 
 ```bash
 sudo apt update && sudo apt full-upgrade -y
 sudo apt install -y --no-install-recommends sway xwayland chromium sway-backgrounds
 ```
-
-> [!NOTE]
-> If you are on Ubuntu replace `chromium` with `chromium-browser`
 
 ## Create necessary files
 
@@ -32,7 +32,7 @@ sudo chmod 644 /usr/share/backgrounds/wallpaper.png
 
 Replace `https://sygn.pages.dev/assets/wallpaper.png` with your own image link.
 
-### Create SWAY Custom Config
+### Create Sway Custom Config
 
 ```bash
 sudo nano /etc/sway/config.d/90-sygn.conf
@@ -66,8 +66,18 @@ exec sleep 5 && /usr/bin/chromium \
     https://sygn.pages.dev
 ```
 
-> [!NOTE]
-> If you are on Ubuntu replace `chromium` with `chromium-browser`
+### Create Cromium Custom Config
+
+```bash
+sudo mkdir -p /etc/chromium/policies/managed/
+sudo nano /etc/chromium/policies/managed/extra_settings.json
+```
+
+```json
+{
+    "TranslateEnabled": false
+}
+```
 
 ### Create autologin for tty1
 

@@ -36,8 +36,8 @@ clear
 echo "${GREEN}${BOLD}"
 echo ""
 echo ""
-echo "           000100000001010110000111001001001000111001000110110101   "
-echo "         0011000100111111011110000100110110110101001101101101100001 "
+echo "           000100000001010110000111001001001000111001000110110101"
+echo "         0011000100111111011110000100110110110101001101101101100001"
 echo "        01111                                                  01001"
 echo "        1011                                                    0110"
 echo "        0110       011111011010          01101000       0101    0000"
@@ -53,8 +53,8 @@ echo "        1011     100111001010      10110011011000       1001    1100"
 echo "        0110       10011101          1100100011         1010    1100"
 echo "        1110                                                    0001"
 echo "        10010                                                  11101"
-echo "         0000111010111100100010000010101101000000111101010000101101 "
-echo "           101001001110111101101011111010001011101100010011101011   "
+echo "         0000111010111100100010000010101101000000111101010000101101"
+echo "           101001001110111101101011111010001011101100010011101011"
 echo ""
 echo ""
 echo "${NC}"
@@ -102,7 +102,7 @@ while [[ ! "$CORRECT" =~ ^[Yy]$ || ! "$IGNORE_NOT_REACHABLE" =~ ^[Yy]$ ]]; do
         continue
     fi
 
-    STATUS_CODE=$(curl -o /dev/null -sw "%{http_code}" "$KIOSK_URL")
+    STATUS_CODE=$(curl -L -o /dev/null -sw "%{http_code}" "$KIOSK_URL")
     if [[ "$STATUS_CODE" != "200" ]]; then
         log_warn ""
         read -rp "Site not reachable. Continue anyway? [y/n] " IGNORE_NOT_REACHABLE </dev/tty
@@ -119,9 +119,10 @@ sudo apt update && sudo apt full-upgrade -y
 
 sudo apt install -y --no-install-recommends \
     sway \
+    sway-backgrounds \
     xwayland \
     $BROWSER \
-    sway-backgrounds
+    fonts-noto-color-emoji
 success "Packages installed."
 
 
@@ -161,10 +162,19 @@ exec sleep 5 && /usr/bin/$BROWSER \\
     --start-fullscreen \\
     --disable-restore-session-state \\
     --check-for-update-interval=31536000 \\
-    ${KIOSK_URL}
+    $KIOSK_URL
 EOF
 
 success "sway custom config created."
+
+sudo mkdir -p /etc/$BROWSER/policies/managed/
+sudo tee /etc/$BROWSER/policies/managed/extra_settings.json > /dev/null <<EOF
+{
+    "TranslateEnabled": false
+}
+EOF
+
+success "chromium custom config created."
 
 # ────────────────────────────────────────────────
 # 4. Create autologin for tty1
